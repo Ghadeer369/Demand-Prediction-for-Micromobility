@@ -59,6 +59,13 @@ training — see [Limitations](#limitations).
 ![Daily trend with rolling average](outputs/figures/rolling_avg_trend.png)
 ![Average rides by weekday](outputs/figures/weekday_avg_demand.png)
 
+## Dashboard
+
+A Tableau dashboard brings the KPIs, trend, zone map, model comparison, and
+forecast together in one view (blueprint and data export in `dashboard/`):
+
+![Dashboard overview](outputs/figures/dashboard_overview.png)
+
 ## Project structure
 
 ```
