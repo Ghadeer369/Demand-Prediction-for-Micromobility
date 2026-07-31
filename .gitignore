@@ -15,11 +15,8 @@ data/processed/*
 models/*
 !models/.gitkeep
 
-# Outputs
-outputs/figures/*
-!outputs/figures/.gitkeep
-outputs/predictions/*
-!outputs/predictions/.gitkeep
+# Outputs — figures and prediction CSVs ARE versioned (small, referenced by
+# the README, not sensitive) — only raw/processed data and models are not.
 
 # OS
 .DS_Store
