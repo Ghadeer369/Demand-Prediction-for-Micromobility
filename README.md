@@ -145,4 +145,8 @@ aggregate demand). Outliers in `Total_Time` are removed via the IQR method.
 Rebuilt from the original senior project *"Demand Prediction for
 Micromobility in Spiders Mobility"* (Ruba Alghamdi, Ghadeer Hamdi, Sadeel
 Mirza; supervised by Dr. Safa Habibullah; University of Jeddah), with data
-provided by Spiders Mobility.
+provided by Spiders Mobility. The original report PDF is kept in this
+repo as `Demand-Prediction-for-Micromobility.pdf` for reference — note its
+methodology (random train/test splits, Random Forest, ARIMA(1,0,2) as best
+model) differs from this rebuild's, which found LSTM best under a
+chronological evaluation (see Results above).
