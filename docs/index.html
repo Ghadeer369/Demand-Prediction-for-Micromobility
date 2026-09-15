@@ -1,0 +1,476 @@
+<!doctype html>
+<title>Spiders Mobility — Demand Prediction Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  .viz-root{
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --surface-2:      #f3f2ee;
+    --bar-muted:      #d9d7cd;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6; /* actual — blue */
+    --series-2:       #eb6834; /* forecast — orange */
+    --good:           #0ca30c;
+    --good-bg:        #e9f7e9;
+    --warning:        #b8790a;
+    --warning-bg:     #fdf1da;
+    --critical:       #d03b3b;
+    --critical-bg:    #fbe7e6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:where(:not([data-theme="light"])) .viz-root{
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --surface-2:      #232321;
+      --bar-muted:      #3d3c38;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #8f8d85;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+      --series-2:       #d95926;
+      --good:           #0ca30c;
+      --good-bg:        #123314;
+      --warning:        #fab219;
+      --warning-bg:     #3a2b0c;
+      --critical:       #e66767;
+      --critical-bg:    #3a1414;
+    }
+  }
+  :root[data-theme="dark"] .viz-root{
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --surface-2:      #232321;
+    --bar-muted:      #3d3c38;
+    --page:           #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #8f8d85;
+    --grid:           #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+    --series-2:       #d95926;
+    --good:           #0ca30c;
+    --good-bg:        #123314;
+    --warning:        #fab219;
+    --warning-bg:     #3a2b0c;
+    --critical:       #e66767;
+    --critical-bg:    #3a1414;
+  }
+
+  *{box-sizing:border-box;}
+  html{color-scheme:light dark;}
+  body{ margin:0; background:var(--page); }
+  .viz-root{
+    background:var(--page);
+    color:var(--text-primary);
+    font-family:'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;
+    direction:rtl;
+    padding-inline:16px;
+    padding-block:28px 60px;
+  }
+  .num{ font-family:'IBM Plex Mono', ui-monospace, monospace; direction:ltr; unicode-bidi:isolate; font-variant-numeric:tabular-nums; }
+  .wrap{ max-width:1040px; margin:0 auto; display:flex; flex-direction:column; gap:18px; }
+
+  header.top{ display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:10px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+  .kicker{ font-size:12px; font-weight:600; letter-spacing:.04em; color:var(--series-1); background:color-mix(in srgb, var(--series-1) 12%, var(--surface-1)); display:inline-block; padding:3px 10px; border-radius:20px; margin-bottom:8px; }
+  h1{ font-size:22px; margin:0; font-weight:700; text-wrap:balance; }
+  .sub{ color:var(--text-secondary); font-size:13.5px; margin-top:4px; }
+  .meta{ text-align:end; font-size:12px; color:var(--text-muted); line-height:1.7; }
+
+  /* KPI grid */
+  .kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:2px; background:var(--border); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .kpi{ background:var(--surface-1); padding:16px 16px; display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .kpi .label{ font-size:12px; color:var(--text-muted); font-weight:500; }
+  .kpi .value{ font-size:26px; font-weight:700; line-height:1.1; }
+  .kpi .value small{ font-size:13px; font-weight:500; color:var(--text-secondary); }
+  .kpi .foot{ font-size:11.5px; color:var(--text-muted); }
+  .status-pill{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; padding:4px 10px; border-radius:8px; width:fit-content; }
+  @media (max-width:680px){ .kpis{ grid-template-columns:1fr 1fr; } }
+
+  /* controls */
+  .controls{ display:flex; flex-wrap:wrap; gap:16px; align-items:center; background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
+  .ctrl-group{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .ctrl-label{ font-size:12px; color:var(--text-muted); font-weight:600; }
+  .pills{ display:flex; flex-wrap:wrap; gap:6px; }
+  .pill{
+    font-size:12.5px; padding:5px 11px; border-radius:20px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text-secondary); cursor:pointer; font-family:inherit;
+  }
+  .pill[aria-pressed="true"]{ background:var(--series-1); border-color:var(--series-1); color:#fff; font-weight:600; }
+  select.ctrl{
+    font-family:'IBM Plex Sans Arabic', sans-serif; font-size:13px; padding:6px 10px; border-radius:8px;
+    border:1px solid var(--border); background:var(--surface-2); color:var(--text-primary);
+  }
+  .seg{ display:flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .seg button{ font-family:inherit; font-size:12.5px; padding:6px 12px; border:none; background:var(--surface-2); color:var(--text-secondary); cursor:pointer; }
+  .seg button[aria-pressed="true"]{ background:var(--series-1); color:#fff; font-weight:600; }
+
+  /* cards */
+  .card{ background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:18px 18px 14px; }
+  .card h2{ font-size:15px; margin:0 0 2px; font-weight:700; }
+  .card .card-sub{ font-size:12px; color:var(--text-muted); margin-bottom:12px; }
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:760px){ .grid-2{ grid-template-columns:1fr; } }
+  .chart-box{ direction:ltr; position:relative; }
+  .legend{ display:flex; gap:16px; font-size:12px; color:var(--text-secondary); margin-bottom:8px; direction:rtl; }
+  .legend .sw{ display:inline-block; width:10px; height:10px; border-radius:3px; margin-inline-end:5px; vertical-align:-1px; }
+
+  /* decision callout */
+  .decision{ border-radius:12px; padding:16px 18px; border:1px solid var(--border); display:flex; gap:12px; align-items:flex-start; }
+  .decision .icon{ font-size:18px; line-height:1.4; }
+  .decision p{ margin:0; font-size:14px; line-height:1.75; }
+  .decision .head{ font-weight:700; font-size:13.5px; margin-bottom:4px; display:block; }
+
+  footer.note{ font-size:11.5px; color:var(--text-muted); line-height:1.8; border-top:1px solid var(--border); padding-top:14px; }
+  footer.note a{ color:var(--series-1); }
+
+  .region-bar-row{ display:flex; align-items:center; gap:8px; font-size:12.5px; padding:5px 0; }
+  .region-bar-row .name{ width:76px; flex-shrink:0; color:var(--text-secondary); }
+  .region-bar-row .track{ flex:1; background:var(--surface-2); border-radius:4px; height:16px; overflow:hidden; }
+  .region-bar-row .fill{ display:block; height:100%; border-radius:4px; background:var(--text-muted); }
+  .region-bar-row .fill.active{ background:var(--series-1); }
+  .region-bar-row .val{ width:52px; text-align:end; flex-shrink:0; color:var(--text-muted); }
+
+  .loading{ padding:40px; text-align:center; color:var(--text-muted); font-size:13px; }
+</style>
+
+<div class="viz-root" id="app">
+  <div class="wrap">
+
+    <header class="top">
+      <div>
+        <span class="kicker">نموذج تفاعلي · بيانات حقيقية</span>
+        <h1>Spiders Mobility — Demand Prediction Dashboard</h1>
+        <div class="sub">توقع طلب مركبات micromobility لتخطيط توزيع الأسطول — مبني على مشروع التخرج الحقيقي بإشراف أكاديمي</div>
+      </div>
+      <div class="meta">
+        <div>github.com/Ghadeer369/<span class="num">Demand-Prediction-for-Micromobility</span></div>
+        <div id="metaRange">…</div>
+      </div>
+    </header>
+
+    <div class="kpis" id="kpiRow">
+      <div class="loading">جارِ تحميل البيانات…</div>
+    </div>
+
+    <div class="controls" id="controls" hidden>
+      <div class="ctrl-group">
+        <span class="ctrl-label">المنطقة</span>
+        <div class="pills" id="regionPills"></div>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">نموذج التنبؤ</span>
+        <select class="ctrl" id="modelSelect"></select>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">أفق التوقع</span>
+        <div class="seg" id="horizonSeg">
+          <button data-h="7" aria-pressed="false">٧ أيام</button>
+          <button data-h="14" aria-pressed="true">١٤ يوماً</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 id="trendTitle">اتجاه الطلب الأسبوعي + التوقع</h2>
+      <div class="card-sub" id="trendSub">متوسط الرحلات اليومي لكل أسبوع (تاريخي) ثم توقع يومي للفترة القادمة</div>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--series-1)"></span>فعلي (متوسط أسبوعي)</span>
+        <span><span class="sw" style="background:var(--series-2)"></span>توقع النموذج (يومي)</span>
+      </div>
+      <div class="chart-box" style="height:260px"><canvas id="trendChart"></canvas></div>
+    </div>
+
+    <div class="decision" id="decisionBox"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2>النمط الأسبوعي</h2>
+        <div class="card-sub">متوسط الرحلات اليومي حسب يوم الأسبوع — كامل الفترة</div>
+        <div class="chart-box" style="height:210px"><canvas id="weeklyChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>الطلب حسب المنطقة</h2>
+        <div class="card-sub">إجمالي الرحلات لكل منطقة — كامل الفترة</div>
+        <div id="regionRanking"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>مقارنة نماذج التنبؤ</h2>
+      <div class="card-sub">هامش الخطأ (MAE) — كل رقم أقل يعني توقعاً أدق</div>
+      <div class="chart-box" style="height:190px"><canvas id="modelChart"></canvas></div>
+    </div>
+
+    <footer class="note">
+      بيانات حقيقية مستخرجة من <span class="num">dashboard/Dashboard_Data.xlsx</span> في مستودع المشروع على GitHub — <span class="num">180,030</span> رحلة فعلية (نوفمبر ٢٠٢١ – سبتمبر ٢٠٢٣) لشركة تشغيل مركبات دقيقة التنقل حقيقية في السعودية والخليج. هذا نموذج تفاعلي مبني كبديل مخصص عن Tableau لأغراض العرض في البورتفوليو — التوقعات تعود لفترة اختبار المشروع الأصلي (سبتمبر ٢٠٢٣)، وليست توقعاً حياً للوقت الحالي.
+    </footer>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+<script>
+(function(){
+  const root = document.getElementById('app');
+  const cs = getComputedStyle(root);
+  const tok = (name) => cs.getPropertyValue(name).trim();
+
+  const fmt = (n) => Math.round(n).toLocaleString('en-US');
+
+  let DATA, state = { region: 'ALL', model: null, horizon: 14 };
+  let trendChart, weeklyChart, modelChart;
+
+  fetch('data.json').then(r => r.json()).then(data => {
+    DATA = data;
+    state.model = DATA.models.slice().sort((a,b)=>a.MAE-b.MAE)[0].Model;
+    init();
+  });
+
+  function init(){
+    document.getElementById('metaRange').textContent =
+      `${DATA.date_range[0]} → ${DATA.date_range[1]} · ${DATA.n_regions} مناطق · ${fmt(DATA.total_rides)} رحلة`;
+
+    buildRegionPills();
+    buildModelSelect();
+    buildHorizonSeg();
+    document.getElementById('controls').hidden = false;
+
+    renderKPIs();
+    renderTrend();
+    renderWeekly();
+    renderRegionRanking();
+    renderModelChart();
+    renderDecision();
+  }
+
+  // ---------- controls ----------
+  function buildRegionPills(){
+    const wrap = document.getElementById('regionPills');
+    const all = document.createElement('button');
+    all.className = 'pill'; all.textContent = 'كل المناطق'; all.setAttribute('aria-pressed', 'true');
+    all.onclick = () => selectRegion('ALL');
+    wrap.appendChild(all);
+    DATA.region_ranking.forEach(([name, total]) => {
+      const b = document.createElement('button');
+      b.className = 'pill'; b.dataset.region = name; b.setAttribute('aria-pressed','false');
+      b.textContent = name;
+      b.onclick = () => selectRegion(name);
+      wrap.appendChild(b);
+    });
+  }
+  function selectRegion(name){
+    state.region = name;
+    document.querySelectorAll('#regionPills .pill').forEach(p => {
+      const isAll = p.textContent === 'كل المناطق';
+      p.setAttribute('aria-pressed', (isAll && name==='ALL') || p.dataset.region === name ? 'true' : 'false');
+    });
+    renderTrend();
+    renderRegionRanking();
+  }
+
+  function buildModelSelect(){
+    const sel = document.getElementById('modelSelect');
+    DATA.models.slice().sort((a,b)=>a.MAE-b.MAE).forEach((m,i) => {
+      const opt = document.createElement('option');
+      opt.value = m.Model; opt.textContent = m.Model + (i===0 ? ' (الأفضل)' : '');
+      if (m.Model === state.model) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onchange = () => { state.model = sel.value; renderKPIs(); renderModelChart(); };
+  }
+
+  function buildHorizonSeg(){
+    document.querySelectorAll('#horizonSeg button').forEach(btn => {
+      btn.onclick = () => {
+        state.horizon = Number(btn.dataset.h);
+        document.querySelectorAll('#horizonSeg button').forEach(b => b.setAttribute('aria-pressed', b===btn ? 'true':'false'));
+        renderTrend();
+      };
+    });
+  }
+
+  // ---------- KPIs ----------
+  function renderKPIs(){
+    const model = DATA.models.find(m => m.Model === state.model);
+    const nextDay = DATA.future[0];
+    const delta = ((nextDay[1] - DATA.recent30_mean) / DATA.recent30_mean) * 100;
+    let statusWord, statusClass;
+    if (delta <= -15){ statusWord = 'طلب منخفض'; statusClass = 'warning'; }
+    else if (delta >= 15){ statusWord = 'طلب مرتفع'; statusClass = 'critical'; }
+    else { statusWord = 'طلب طبيعي'; statusClass = 'good'; }
+
+    document.getElementById('kpiRow').innerHTML = `
+      <div class="kpi">
+        <div class="label">التوقع القادم (${nextDay[0]})</div>
+        <div class="value num">${fmt(nextDay[1])} <small>رحلة/يوم</small></div>
+        <div class="foot">أول يوم بعد نهاية بيانات المشروع</div>
+      </div>
+      <div class="kpi">
+        <div class="label">المتوسط التاريخي (كامل الفترة)</div>
+        <div class="value num">${fmt(DATA.overall_mean)} <small>رحلة/يوم</small></div>
+        <div class="foot">${DATA.n_days} يوماً من البيانات</div>
+      </div>
+      <div class="kpi">
+        <div class="label">دقة النموذج المختار — ${state.model}</div>
+        <div class="value num">± ${model.MAE.toFixed(1)}</div>
+        <div class="foot">هامش خطأ متوسط (MAE)، أقل = أدق</div>
+      </div>
+      <div class="kpi">
+        <div class="label">حالة الطلب القادم</div>
+        <div class="status-pill" style="background:var(--${statusClass}-bg); color:var(--${statusClass})">${statusWord}</div>
+        <div class="foot num">${delta>=0?'+':''}${delta.toFixed(0)}٪ عن متوسط آخر ٣٠ يوماً</div>
+      </div>`;
+  }
+
+  // ---------- trend chart ----------
+  function renderTrend(){
+    const isAll = state.region === 'ALL';
+    document.getElementById('trendTitle').textContent = isAll ? 'اتجاه الطلب الأسبوعي + التوقع — كل المناطق' : `اتجاه الطلب الأسبوعي — منطقة ${state.region}`;
+    document.getElementById('trendSub').textContent = isAll
+      ? 'متوسط الرحلات اليومي لكل أسبوع (تاريخي) ثم توقع يومي للفترة القادمة'
+      : 'التوقع اليومي متاح على مستوى الشركة ككل فقط في بيانات هذا المشروع، وليس لكل منطقة — لذلك يظهر هنا الاتجاه التاريخي فقط';
+
+    const series = isAll ? DATA.overall_weekly : DATA.region_weekly[state.region];
+    const histLabels = series.map(d => d[0]);
+    const histVals = series.map(d => d[1]);
+
+    let labels = histLabels.slice();
+    let forecastVals = new Array(histLabels.length).fill(null);
+
+    if (isAll){
+      const fc = DATA.future.slice(0, state.horizon);
+      // bridge: forecast line starts at last actual point for visual continuity
+      forecastVals[forecastVals.length - 1] = DATA.last_actual[1];
+      fc.forEach(([d,v]) => { labels.push(d); forecastVals.push(v); });
+      histVals.push(...new Array(fc.length).fill(null));
+    }
+
+    if (trendChart) trendChart.destroy();
+    trendChart = new Chart(document.getElementById('trendChart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label:'فعلي', data: histVals, borderColor: tok('--series-1'), backgroundColor: 'transparent',
+            borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps:false },
+          { label:'توقع', data: forecastVals, borderColor: tok('--series-2'), backgroundColor: 'transparent',
+            borderWidth: 2, borderDash:[5,3], pointRadius: 0, tension: 0.15, spanGaps:false }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{ legend:{ display:false },
+          tooltip:{ backgroundColor: tok('--surface-2'), titleColor: tok('--text-primary'), bodyColor: tok('--text-secondary'),
+            borderColor: tok('--border'), borderWidth:1, padding:10 } },
+        scales:{
+          x:{ ticks:{ color: tok('--text-muted'), maxTicksLimit:8, font:{size:11} }, grid:{ display:false } },
+          y:{ beginAtZero:true, ticks:{ color: tok('--text-muted'), font:{size:11} }, grid:{ color: tok('--grid') } }
+        }
+      }
+    });
+  }
+
+  // ---------- weekly pattern ----------
+  function renderWeekly(){
+    weeklyChart = new Chart(document.getElementById('weeklyChart'), {
+      type:'bar',
+      data:{
+        labels: DATA.weekly_pattern.map(d=>d.day),
+        datasets:[{
+          data: DATA.weekly_pattern.map(d=>d.avg),
+          backgroundColor: DATA.weekly_pattern.map(d => d.weekend ? tok('--series-1') : tok('--bar-muted')),
+          borderRadius:4, borderSkipped:false, maxBarThickness:34
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false},
+          tooltip:{ backgroundColor: tok('--surface-2'), titleColor: tok('--text-primary'), bodyColor: tok('--text-secondary'), borderColor: tok('--border'), borderWidth:1 } },
+        scales:{
+          x:{ ticks:{ color: tok('--text-muted'), font:{size:11} }, grid:{ display:false } },
+          y:{ beginAtZero:true, ticks:{ color: tok('--text-muted'), font:{size:11} }, grid:{ color: tok('--grid') } }
+        }
+      }
+    });
+  }
+
+  // ---------- region ranking (custom bars, matches design tokens) ----------
+  function renderRegionRanking(){
+    const max = DATA.region_ranking[0][1];
+    const html = DATA.region_ranking.map(([name, total]) => {
+      const pct = Math.max(3, Math.round((total/max)*100));
+      const active = (state.region === name) ? 'active' : '';
+      return `<div class="region-bar-row">
+        <span class="name">${name}</span>
+        <span class="track"><span class="fill ${active}" style="width:${pct}%"></span></span>
+        <span class="val num">${fmt(total)}</span>
+      </div>`;
+    }).join('');
+    document.getElementById('regionRanking').innerHTML = html;
+  }
+
+  // ---------- model comparison ----------
+  function renderModelChart(){
+    const sorted = DATA.models.slice().sort((a,b)=>a.MAE-b.MAE);
+    if (modelChart) modelChart.destroy();
+    modelChart = new Chart(document.getElementById('modelChart'), {
+      type:'bar',
+      data:{
+        labels: sorted.map(m=>m.Model),
+        datasets:[{
+          data: sorted.map(m=>Number(m.MAE.toFixed(1))),
+          backgroundColor: sorted.map((m,i)=> m.Model===state.model ? tok('--series-1') : tok('--bar-muted')),
+          borderRadius:4, borderSkipped:false, maxBarThickness:40
+        }]
+      },
+      options:{
+        indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false},
+          tooltip:{ backgroundColor: tok('--surface-2'), titleColor: tok('--text-primary'), bodyColor: tok('--text-secondary'), borderColor: tok('--border'), borderWidth:1,
+            callbacks:{ label: (ctx) => `MAE: ${ctx.parsed.x}` } } },
+        scales:{
+          x:{ beginAtZero:true, ticks:{ color: tok('--text-muted'), font:{size:11} }, grid:{ color: tok('--grid') } },
+          y:{ ticks:{ color: tok('--text-primary'), font:{size:12,weight:'600'} }, grid:{ display:false } }
+        }
+      }
+    });
+  }
+
+  // ---------- decision callout ----------
+  function renderDecision(){
+    const nextDay = DATA.future[0];
+    const delta = ((nextDay[1] - DATA.recent30_mean) / DATA.recent30_mean) * 100;
+    const top = DATA.region_ranking[0];
+    let cls, icon, head, text;
+    if (delta <= -15){
+      cls = 'warning'; icon = '⚠️'; head = 'توصية تشغيلية — انخفاض متوقع في الطلب';
+      text = `الطلب المتوقع ليوم ${nextDay[0]} (${fmt(nextDay[1])} رحلة) أقل من متوسط آخر ٣٠ يوماً بنسبة ${Math.abs(delta).toFixed(0)}٪. يُنصح بمراجعة توزيع الأسطول لتفادي تكدّس مركبات غير مستخدمة، خصوصاً في منطقة ${top[0]} (الأعلى طلباً تاريخياً بإجمالي ${fmt(top[1])} رحلة).`;
+    } else if (delta >= 15){
+      cls = 'critical'; icon = '🔺'; head = 'توصية تشغيلية — ارتفاع متوقع في الطلب';
+      text = `الطلب المتوقع ليوم ${nextDay[0]} أعلى من متوسط آخر ٣٠ يوماً بنسبة ${delta.toFixed(0)}٪. يُنصح بزيادة توفر المركبات مسبقاً، خاصة يومي الجمعة والسبت حيث يرتفع الطلب تاريخياً ٣٨٪ عن بقية أيام الأسبوع.`;
+    } else {
+      cls = 'good'; icon = '✅'; head = 'الطلب ضمن النطاق الطبيعي';
+      text = `الطلب المتوقع ليوم ${nextDay[0]} قريب من متوسط آخر ٣٠ يوماً (فرق ${delta.toFixed(0)}٪) — لا حاجة لتعديل استثنائي في توزيع الأسطول حالياً.`;
+    }
+    const box = document.getElementById('decisionBox');
+    box.style.background = `var(--${cls}-bg)`;
+    box.style.borderColor = `var(--${cls})`;
+    box.innerHTML = `<span class="icon">${icon}</span><div><span class="head" style="color:var(--${cls})">${head}</span><p>${text}</p></div>`;
+  }
+
+})();
+</script>
