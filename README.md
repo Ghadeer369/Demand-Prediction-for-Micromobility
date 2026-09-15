@@ -61,8 +61,11 @@ training — see [Limitations](#limitations).
 
 ## Dashboard
 
-A Tableau dashboard brings the KPIs, trend, zone map, model comparison, and
-forecast together in one view (blueprint and data export in `dashboard/`):
+An interactive dashboard brings the KPIs, weekly trend + forecast, regional
+breakdown, and model comparison together in one view, with live region/model/
+horizon filters and an auto-generated operational recommendation:
+
+**[Open the live interactive dashboard](https://ghadeer369.github.io/Demand-Prediction-for-Micromobility/)**
 
 ![Dashboard overview](outputs/figures/dashboard_overview.png)
 
@@ -91,7 +94,8 @@ micromobility-demand-prediction/
 ├── outputs/
 │   ├── figures/                 # saved charts
 │   └── predictions/             # model_comparison.csv, future_predictions.csv
-├── dashboard/                   # Tableau Public blueprint (see dashboard/README.md)
+├── dashboard/                   # Tableau Public blueprint + data export (see dashboard/README.md)
+├── docs/                        # live interactive dashboard (GitHub Pages)
 ├── requirements.txt
 └── main.py
 ```
